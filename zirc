@@ -20,7 +20,7 @@ ZIRC_VERSION="0.1"
 #   Step 2) (Optional) Run zsh_aliases
 #           This sets up several aliases to make it easier to use.  Basically
 #           it strips the zirc_ front end off of everything.  If you want to
-#           see the alias list, type echo $functions[zsh_aliases]
+#           see the alias list, type echo $functions[zirc_aliases]
 #   Step 3) Run zirc_connect
 #           It'll explain the syntax and the fairly standardized environment
 #           variables controlling its behavior.
