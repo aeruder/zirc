@@ -471,7 +471,7 @@ function _zirc_command_PART {
 
 	_zirc_echo "$who has left $where ($msg)"
 	_zirc_isme "$pref" && {
-		[[ ZIRC_CURRENT == "$where" ]] && ZIRC_CURRENT="$ZIRC_LAST"
+		[[ "$ZIRC_CURRENT" == "$where" ]] && ZIRC_CURRENT="$ZIRC_LAST"
 		ZIRC_CHANNELS[(r)$where]=()
 	}
 }
@@ -994,7 +994,8 @@ function _zirc_quote_magic {
 
 	local -A applicable
 	applicable=( zirc_action 1 zirc_msg 1 zirc_pmsg 2 me 1 msg 1 pmsg 2 \
-	             zirc_topic 1 ctopic 1 zirc_quit 1 quit 1 zirc_part 2 part 2 )
+	             zirc_topic 1 ctopic 1 zirc_quit 1 quit 1 zirc_part 2 part 2 
+	             join 1 zirc_join 1 )
 
     local qkey="${(q)KEYS}"
     
