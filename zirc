@@ -1018,7 +1018,7 @@ zirc_quote
 
 # Unsetup quote magic
 function zirc_unquote {
-	zle -N self-insert .self-insert 
+	zle -D self-insert
 }
 
 # }}}3
