@@ -1,7 +1,7 @@
 #!/bin/zsh
 # vim:noet fdm=marker sw=4 ts=4
 
-ZIRC_VERSION="0.1"
+ZIRC_VERSION="0.2"
 
 # ZIRC - A 100% ZSH IRC client
 #
@@ -17,18 +17,20 @@ ZIRC_VERSION="0.1"
 #           . ./zirc or whatever
 #           You can even put this into your .zshrc, it won't hurt anything
 #           besides the creation of several _zirc_*/zirc_* functions.
-#   Step 2) (Optional) Run zsh_aliases
+#   Step 2) (Optional) Run zirc_aliases
 #           This sets up several aliases to make it easier to use.  Basically
-#           it strips the zirc_ front end off of everything.  If you want to
-#           see the alias list, type echo $functions[zirc_aliases]
-#   Step 3) Run zirc_connect
+#           it strips the zirc_ front end off of everything. 
+#   Step 3) (Optional) Run zirc_unquote to turn off autoquoting and
+#           zirc_quote to turn it on (default on).  This will quote shell
+#           characters as you type on the ZIRC commands.
+#   Step 4) Run zirc_connect
 #           It'll explain the syntax and the fairly standardized environment
 #           variables controlling its behavior.
-#   Step 4) Use zirc_msg to message, zirc_pmsg to private message.
+#   Step 5) Use zirc_msg to message, zirc_pmsg to private message.
 #           zirc_switch can change to another channel. (zirc_switch somechan)
 #           or
 #           zirc_query can change to anything
-#   Step 5) zirc_last is very handy as it switches to the channel/user that
+#   Step 6) zirc_last is very handy as it switches to the channel/user that
 #           last said something to you.
 #
 #   Prompt integration: a few environment variables can help you on your way.
@@ -62,6 +64,22 @@ ZIRC_PARAM_DEFS[ZIRC_USER]="Username:\$IRCUSER:$USERNAME"
 ZIRC_PARAM_DEFS[ZIRC_PORT]="Port:\$IRCPORT:6667"
 ZIRC_PARAM_DEFS[ZIRC_NAME]="Real name:\$IRCNAME:John Doe"
 ZIRC_PARAM_DEFS[ZIRC_HOST]="Host name:\$IRCHOST:localhost"
+
+typeset -A ZIRC_ALIAS_DEFS
+ZIRC_ALIAS_DEFS[me]='zirc_action';
+ZIRC_ALIAS_DEFS[nick]='zirc_nick';
+ZIRC_ALIAS_DEFS[msg]='zirc_msg';
+ZIRC_ALIAS_DEFS[pmsg]='zirc_pmsg';
+ZIRC_ALIAS_DEFS[quit]='zirc_quit';
+ZIRC_ALIAS_DEFS[ctopic]='zirc_topic';
+ZIRC_ALIAS_DEFS[topic]='zirc_checktopic';
+ZIRC_ALIAS_DEFS[part]='zirc_part';
+ZIRC_ALIAS_DEFS[last]='zirc_last';
+ZIRC_ALIAS_DEFS[join]='zirc_join';
+ZIRC_ALIAS_DEFS[sw]='zirc_switch';
+ZIRC_ALIAS_DEFS[query]='zirc_query';
+ZIRC_ALIAS_DEFS[connect]='zirc_connect';
+ZIRC_ALIAS_DEFS[help]='zirc_help';
 
 # zirc_connect parameter handling {{{
 
@@ -163,8 +181,8 @@ function _zirc_parse_server_line {
 #   blah!host
 #   blah3 blah4
 function _zirc_parse_server_prefix {
+	setopt localoptions extendedglob
 	local line prefix
-	local EXTENDED_GLOB ; EXTENDED_GLOB=1
 	line="${1## #}"
 	if [[ "${line[1]}" != ":" ]]; then
 		prefix=""
@@ -192,8 +210,8 @@ function _zirc_parse_server_prefix {
 #   Message
 #   <empty line> 
 function _zirc_parse_server_word {
+	setopt localoptions extendedglob
 	local line word 
-	local EXTENDED_GLOB ; EXTENDED_GLOB=1
 	line="${1## #}"
 	if [[ "${line[1]}" != ":" ]]; then
 		word="${line%% *}"
@@ -565,7 +583,7 @@ function _zirc_command_numeric {
 
 # catchall for unhandled commands
 function _zirc_command_other {
-	local EXTENDED_GLOB=1
+	setopt localoptions extendedglob
 	local pref="$1" comm="$2"
 	shift 2
 	if [[ "$comm" == [0-9]## ]]; then
@@ -758,16 +776,24 @@ function zirc_focus {
 	echo "$ZIRC_CURRENT"
 }
 
-# Print out zirc_* functions
+# Print out zirc_* functions and alias mappings
 function zirc_help {
-	local commands
+	local commands a
 	commands=( "${(k)functions[@]}" )
 	commands=( ${(M)commands:#zirc_*} )
 	commands=( ${(o)commands} )
-	commands=( "	"${^commands} )
+	commands=( "        "${^commands} )
 	echo "ZIRC Commands:"
 	echo "${(F)commands}"
+
+	echo
+	echo "Aliases (if using zirc_aliases):"
+	for a in "${(o@)${(k)ZIRC_ALIAS_DEFS[@]}}"; do
+		echo "${(l.12...)a} => ${ZIRC_ALIAS_DEFS[$a]}"
+	done
+
 	return 0
+
 }
 
 # Change nickname to argument
@@ -904,6 +930,11 @@ function zirc_connected {
 	! [[ -z "$ZIRC_FD" ]]
 }
 
+# IRC mode (lets you type and see things typed without working about globbing)
+function zirc_ircmode {
+	zirc_connected || { echo "Not connected" ; return 1 }
+}
+
 # Connect to a server
 function zirc_connect {
 	if ! [[ -z "$ZIRC_FD" ]]; then
@@ -949,21 +980,45 @@ function zirc_disconnect {
 
 # Setup aliases
 function zirc_aliases {
-	echo "Setting up some convenience aliases"
-
-	alias me='zirc_action'
-	alias nick='zirc_nick'
-	alias msg='zirc_msg'
-	alias pmsg='zirc_pmsg'
-	alias quit='zirc_quit'
-	alias ctopic='zirc_topic'
-	alias topic='zirc_checktopic'
-	alias part='zirc_part'
-	alias last='zirc_last'
-	alias join='zirc_join'
-	alias sw='zirc_switch'
-	alias query='zirc_query'
-	alias connect='zirc_connect'
-	alias help='zirc_help'
+	local a
+	echo "Setting up some convenience aliases:"
+	for a in "${(o@)${(k)ZIRC_ALIAS_DEFS[@]}}"; do
+		eval "alias ${a}=\"\${ZIRC_ALIAS_DEFS[\$a]}\""
+		echo "${(l.12...)a} => ${ZIRC_ALIAS_DEFS[$a]}"
+	done
 }
+
+# Widget for autoquoting everything
+function _zirc_quote_magic {
+	setopt localoptions noksharrays extendedglob
+
+	local -A applicable
+	applicable=( zirc_action 1 zirc_msg 1 zirc_pmsg 2 me 1 msg 1 pmsg 2 \
+	             zirc_topic 1 ctopic 1 zirc_quit 1 quit 1 zirc_part 2 part 2 )
+
+    local qkey="${(q)KEYS}"
+    
+    if [[ "$KEYS" != "$qkey" ]]; then
+		local lbuf="$LBUFFER$qkey" arg
+		local -a words
+		words=("${(@Q)${(z)lbuf}}")
+
+		arg=${applicable[${words[1]}]}
+		! [[ -z "$arg" ]] && [[ "${#words}" == "$(( arg + 1 ))" ]] && \
+		    LBUFFER="${LBUFFER}\\"
+	fi
+	zle .self-insert
+}
+
+# Setup quote magic
+function zirc_quote {
+	zle -N self-insert _zirc_quote_magic
+}
+zirc_quote
+
+# Unsetup quote magic
+function zirc_unquote {
+	zle -N self-insert .self-insert 
+}
+
 # }}}3
