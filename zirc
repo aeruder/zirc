@@ -6,6 +6,7 @@ ZIRC_VERSION="0.2"
 # ZIRC - A 100% ZSH IRC client
 #
 # Copyright (C) 2006 by Andrew Ruder <andy@aeruder.net>
+# Copyright (C) 2006 by Gergely Nagy <gergely-nagy@gmail.com> 
 #
 # This IRC client is pretty ridiculous, I made it entirely as a joke, but it
 # actually works fairly decently for as little work has been put into it.
@@ -65,6 +66,8 @@ ZIRC_PARAM_DEFS[ZIRC_PORT]="Port:\$IRCPORT:6667"
 ZIRC_PARAM_DEFS[ZIRC_NAME]="Real name:\$IRCNAME:John Doe"
 ZIRC_PARAM_DEFS[ZIRC_HOST]="Host name:\$IRCHOST:localhost"
 
+
+# alias definitions {{{
 typeset -A ZIRC_ALIAS_DEFS
 ZIRC_ALIAS_DEFS[me]='zirc_action';
 ZIRC_ALIAS_DEFS[nick]='zirc_nick';
@@ -80,6 +83,18 @@ ZIRC_ALIAS_DEFS[sw]='zirc_switch';
 ZIRC_ALIAS_DEFS[query]='zirc_query';
 ZIRC_ALIAS_DEFS[connect]='zirc_connect';
 ZIRC_ALIAS_DEFS[help]='zirc_help';
+ZIRC_ALIAS_DEFS[mode]='zirc_mode';
+ZIRC_ALIAS_DEFS[op]='zirc_op';
+ZIRC_ALIAS_DEFS[deop]='zirc_deop';
+ZIRC_ALIAS_DEFS[voice]='zirc_voice';
+ZIRC_ALIAS_DEFS[devoice]='zirc_devoice';
+ZIRC_ALIAS_DEFS[names]='zirc_names';
+ZIRC_ALIAS_DEFS[whois]='zirc_whois';
+ZIRC_ALIAS_DEFS[who]='zirc_who';
+ZIRC_ALIAS_DEFS[kick]='zirc_kick';
+ZIRC_ALIAS_DEFS[away]='zirc_away';
+# }}}
+
 
 # zirc_connect parameter handling {{{
 
@@ -208,10 +223,10 @@ function _zirc_parse_server_prefix {
 #   :Message
 # again
 #   Message
-#   <empty line> 
+#   <empty line>
 function _zirc_parse_server_word {
 	setopt localoptions extendedglob
-	local line word 
+	local line word
 	line="${1## #}"
 	if [[ "${line[1]}" != ":" ]]; then
 		word="${line%% *}"
@@ -230,7 +245,7 @@ function _zirc_parse_server_word {
 
 # Split a prefix and get nick (nick!host)
 #   Input: nick!host or nick
-#   Output: 
+#   Output:
 #     <empty-line>
 function _zirc_prefix_nick {
 	local a
@@ -457,10 +472,10 @@ function _zirc_command_JOIN {
 	local where="$1"
 
 	_zirc_echo "$who ($at) has joined $where"
-	_zirc_isme "$pref" && { 
+	_zirc_isme "$pref" && {
 		ZIRC_LAST="$ZIRC_CURRENT"
-		ZIRC_CURRENT="$where" 
-		ZIRC_CHANNELS+=("$where") 
+		ZIRC_CURRENT="$where"
+		ZIRC_CHANNELS+=("$where")
 	}
 }
 
@@ -695,7 +710,7 @@ function _zirc_channel_match {
 
 	for a in "${chans[@]}"; do
 		(( ${#a} < ${#shortest} )) && shortest="${a}"
-	done	
+	done
 	
 	echo "${shortest}"
 	return 0
@@ -731,6 +746,141 @@ function zirc_switch {
 	ZIRC_CURRENT="${chan}"
 	echo "Switched to $ZIRC_CURRENT"
 	return 0
+}
+
+# Sets channel modes
+function zirc_mode {
+	local modes="${(j: :)@}"
+
+	if [[ -z "$modes" ]]; then
+		echo "Usage: $0 <modes>"
+		echo "Set channel modes to <modes>."
+		echo "Sends to the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1 }
+	_zirc_write "MODE ${ZIRC_CURRENT} ${modes}"
+}
+
+# Set a single mode for a list of users
+function _zirc_batch_mode {
+	local mode="$1"
+	shift
+	local users="${(j: :)@}"
+
+	for user in $users; do
+		zirc_mode "$mode" "$user"
+	done
+}
+
+# Give operator status to user(s)
+function zirc_op {
+	if [[ -z "$@" ]]; then
+		echo "Usage: $0 <users>"
+		echo "Give operator status to <users>."
+		echo "Works on the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_batch_mode "+o" $@
+}
+
+# Revoke operator status from user(s)
+function zirc_deop {
+	if [[ -z "$@" ]]; then
+		echo "Usage: $0 <users>"
+		echo "Revoke operator status from <users>."
+		echo "Works on the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_batch_mode "-o" $@
+}
+
+# Give a voice flag to user(s)
+function zirc_voice {
+	if [[ -z "$@" ]]; then
+		echo "Usage: $0 <users>"
+		echo "Give a voice flag to <users>."
+		echo "Works on the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_batch_mode "+v" $@
+}
+
+# Revoke the voice flag from user(s)
+function zirc_devoice {
+	if [[ -z "$@" ]]; then
+		echo "Usage: $0 <users>"
+		echo "Revoke the voice flag from <users>."
+		echo "Works on the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_batch_mode "-v" $@
+}
+
+# Query the names on a channel
+function zirc_names {
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_write "NAMES $ZIRC_CURRENT"
+}
+
+# Issue a WHOIS request
+function zirc_whois {
+	if [[ -z "$1" ]]; then
+		echo "Usage: $0 <user>"
+		echo "Get detailed information about <user>."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_write "WHOIS $1"
+}
+
+# Issue a WHO request
+function zirc_who {
+	local chan="${1:-${ZIRC_CURRENT}}"
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_write "WHO $chan"
+}
+
+# Kick user from the current channel
+function zirc_kick {
+	if [[ -z "$@" ]]; then
+		echo "Usage: $0 <user> [<reason>]"
+		echo "Kick <users> from the current channel, due to <reason>."
+		echo "Works on the current focus (Current: '$ZIRC_CURRENT')."
+		return 1
+	fi
+
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	local user=$1
+	shift
+
+	_zirc_write "KICK $ZIRC_CURRENT $user ${@:+:$@}"
+}
+
+# Sets/unsets the automatic away message
+function zirc_away {
+	zirc_connected || { echo "Not connected" ; return 1}
+
+	_zirc_write "AWAY ${@:+:$@}"
 }
 
 # Just switch focus to the argument.  Don't check against anything else.
@@ -928,11 +1078,6 @@ function zirc_checktopic {
 # Returns success if currently connected
 function zirc_connected {
 	! [[ -z "$ZIRC_FD" ]]
-}
-
-# IRC mode (lets you type and see things typed without working about globbing)
-function zirc_ircmode {
-	zirc_connected || { echo "Not connected" ; return 1 }
 }
 
 # Connect to a server
