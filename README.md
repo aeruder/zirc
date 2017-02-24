@@ -18,23 +18,22 @@ friends:
 
 1. Source the file (. ./zirc)
 
-2. (Optional) Run zsh_aliases, this sets up some aliases to make it a
-bit more comfortable to use.
-   me => zirc_action
-   msg => zirc_msg
-   last => zirc_last
-   connect => zirc_connect
-   etc...
+2. (Optional) Run zsh_aliases, this sets up some aliases to make it a bit more comfortable to use.
+  * me => zirc_action
+  * msg => zirc_msg
+  * last => zirc_last
+  * connect => zirc_connect
+  * etc...
 
 3. Important commands: command(alias)
-   zirc_switch(sw):       change channel focus
-   zirc_last(last):       change channel focus to last place with a message
-   zirc_query(query):     change focus to username
-   zirc_msg(msg):         message to focused user/channel
-   zirc_pmsg(pmsg):       message to any user/channel
-   zirc_quit(quit):       quit with optional quit message
-   zirc_nick(nick):       change nickname
-   zirc_connect(connect): connect to IRC server
-   zirc_part(part):       Leave channel 
-   zirc_help(help):       List zirc commands
-   zirc_action(me):       Perform action in focused channel/user
+  * zirc_switch(sw):       change channel focus
+  * zirc_last(last):       change channel focus to last place with a message
+  * zirc_query(query):     change focus to username
+  * zirc_msg(msg):         message to focused user/channel
+  * zirc_pmsg(pmsg):       message to any user/channel
+  * zirc_quit(quit):       quit with optional quit message
+  * zirc_nick(nick):       change nickname
+  * zirc_connect(connect): connect to IRC server
+  * zirc_part(part):       Leave channel 
+  * zirc_help(help):       List zirc commands
+  * zirc_action(me):       Perform action in focused channel/user
